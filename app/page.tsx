@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+import ReactMarkdown from 'react-markdown';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 const SESSION_KEY = 'who-we_session';
@@ -43,8 +44,9 @@ export default function Home() {
 
   if (!authChecked) {
     return (
-      <div className="flex h-screen items-center justify-center text-neutral-400 text-base">
-        加载中...
+      <div className="flex h-screen flex-col items-center justify-center gap-2 bg-white">
+        <p className="text-neutral-400 text-base">正在为你准备这次对话…</p>
+        <p className="text-neutral-300 text-sm">别着急，慢慢来</p>
       </div>
     );
   }
@@ -235,8 +237,9 @@ function ChatScreen({
 
   if (!historyLoaded) {
     return (
-      <div className="flex h-screen items-center justify-center text-neutral-400 text-base">
-        加载中...
+      <div className="flex h-screen flex-col items-center justify-center gap-2 bg-white">
+        <p className="text-neutral-400 text-base">正在为你准备这次对话…</p>
+        <p className="text-neutral-300 text-sm">别着急，慢慢来</p>
       </div>
     );
   }
@@ -310,20 +313,6 @@ const BG_COLORS = [
   { label: '雾蓝', value: '#eef2f7' },
   { label: '浅绿', value: '#f0fdf4' },
 ];
-
-// 从 SSE 流文本中提取 AI 回复全文
-function parseChatStream(text: string): string {
-  let out = '';
-  for (const line of text.split('\n')) {
-    if (line.startsWith('data: ')) {
-      try {
-        const obj = JSON.parse(line.slice(6));
-        if (obj.type === 'text-delta') out += obj.delta;
-      } catch {}
-    }
-  }
-  return out;
-}
 
 function SettingsPanel({
   settings,
@@ -551,30 +540,86 @@ function ChatApp({
     },
   });
 
-  // 新会话自动开场：无历史消息时，让 AI 先铺垫今天会做什么并抛出第一个问题
+  // 跟踪最新 messages，避免在 effect 里读 stale closure 或造成依赖警告
+  const messagesRef = useRef(messages);
   useEffect(() => {
-    if (messages.length > 0 || openingStarted.current || status !== 'ready') return;
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // 防抖自动保存：messages 变化后 1.5 秒内没有新变化则保存到账号
+  // （不依赖 onFinish，用户中途退出/刷新也不会丢消息）
+  const saveTimer = useRef<any>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveConversation(messages);
+    }, 1500);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [messages, saveConversation]);
+
+  // 新会话自动开场：无历史消息时，让 AI 先铺垫今天会做什么并抛出第一个问题（流式打字效果）
+  // 注意：依赖只放 sessionId，避免 setMessages 后 effect 重跑 abort 流；
+  // StrictMode 下 effect 会 mount→unmount→mount，cleanup 重置 openingStarted 以便二次触发
+  useEffect(() => {
+    if (openingStarted.current || messagesRef.current.length > 0) return;
     openingStarted.current = true;
     setOpeningLoading(true);
 
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, messages: [] }),
-    })
-      .then((res) => res.text())
-      .then((streamText) => {
-        const text = parseChatStream(streamText);
-        if (text) {
-          setMessages([
-            { id: 'opening_' + Date.now(), role: 'assistant', parts: [{ type: 'text', text }] },
-          ]);
+    const openingId = 'opening_' + Date.now();
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, messages: [] }),
+          signal: controller.signal,
+        });
+        const reader = res.body?.getReader();
+        if (!reader) return;
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let acc = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const obj = JSON.parse(line.slice(6));
+                if (obj.type === 'text-delta' && typeof obj.delta === 'string') {
+                  acc += obj.delta;
+                  setMessages([
+                    { id: openingId, role: 'assistant', parts: [{ type: 'text', text: acc }] },
+                  ]);
+                  setOpeningLoading(false);
+                }
+              } catch {}
+            }
+          }
         }
-      })
-      .catch(() => {})
-      .finally(() => setOpeningLoading(false));
+      } catch (e) {
+        if ((e as any)?.name === 'AbortError') return;
+      } finally {
+        setOpeningLoading(false);
+      }
+    })();
+
+    return () => {
+      controller.abort();
+      // StrictMode 下允许重新触发；真实卸载时组件销毁也无妨
+      openingStarted.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, status, sessionId]);
+  }, [sessionId]);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -617,6 +662,26 @@ function ChatApp({
 
   const isBusy = status === 'submitted' || status === 'streaming';
 
+  // 撤销功能：只能撤销"最新一条用户消息"，并连带删除 AI 对应的回复
+  // AI 开场白（第一条背景）不会被删除
+  const lastUserIndex = messages.reduce(
+    (acc, m, i) => (m.role === 'user' ? i : acc),
+    -1,
+  );
+
+  const undoMessage = (idx: number) => {
+    setMessages((prev) => {
+      if (idx < 0 || idx >= prev.length) return prev;
+      const next = [...prev];
+      next.splice(idx, 1); // 删除用户消息
+      // 如果下一条是 AI 回复（对应这个问题的回答），一并删除
+      if (idx < next.length && next[idx].role === 'assistant') {
+        next.splice(idx, 1);
+      }
+      return next;
+    });
+  };
+
   return (
     <div
       className="flex flex-col h-screen w-full"
@@ -624,6 +689,7 @@ function ChatApp({
         backgroundColor: settings.bgColor,
         color: settings.textColor,
         fontSize: settings.fontSize,
+        animation: 'fade-in 0.3s ease',
       }}
     >
       {/* 顶部标题栏 */}
@@ -690,31 +756,71 @@ function ChatApp({
             </div>
           )}
 
-          {messages.map((m) => (
-            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          {messages.map((m, idx) => {
+            const isLatestUser = m.role === 'user' && idx === lastUserIndex;
+            return (
               <div
-                className={`max-w-[80%] rounded-xl px-4 py-3 ${
-                  m.role === 'user' ? 'text-right' : 'text-left'
+                key={m.id}
+                className={`flex items-center ${
+                  m.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
-                style={
-                  m.role === 'user'
-                    ? { backgroundColor: 'rgba(128,128,128,0.12)', color: settings.textColor }
-                    : { color: settings.textColor }
-                }
               >
                 {m.role === 'user' && (
-                  <div className="mb-1">
-                    <span className="text-xs" style={{ opacity: 0.4 }}>
-                      你
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => undoMessage(idx)}
+                    disabled={!isLatestUser}
+                    title={isLatestUser ? '撤销这句话' : '只能撤销最新一句'}
+                    className={`shrink-0 mr-2 text-lg rounded-full w-8 h-8 flex items-center justify-center transition ${
+                      isLatestUser
+                        ? 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100'
+                        : 'text-neutral-200 cursor-not-allowed'
+                    }`}
+                  >
+                    ↶
+                  </button>
                 )}
-                <p className="leading-relaxed whitespace-pre-wrap">
-                  {getMessageText(m)}
-                </p>
+                <div
+                  className={`max-w-[80%] rounded-xl px-4 py-3 ${
+                    m.role === 'user' ? 'text-right' : 'text-left'
+                  }`}
+                  style={
+                    m.role === 'user'
+                      ? { backgroundColor: 'rgba(128,128,128,0.12)', color: settings.textColor }
+                      : { color: settings.textColor }
+                  }
+                >
+                  {m.role === 'user' && (
+                    <div className="mb-1">
+                      <span className="text-xs" style={{ opacity: 0.4 }}>
+                        你
+                      </span>
+                    </div>
+                  )}
+                  {m.role === 'assistant' ? (
+                    <div className="markdown-body leading-relaxed">
+                      <ReactMarkdown>{getMessageText(m)}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="leading-relaxed whitespace-pre-wrap">
+                      {getMessageText(m)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* AI 回复前的"正在输入…"提示 */}
+          {(status === 'submitted' || status === 'streaming') && messages.length > 0 && (
+            <div className="flex justify-start">
+              <div className="rounded-xl px-4 py-3 text-left">
+                <span className="text-sm" style={{ opacity: 0.5 }}>
+                  正在输入…
+                </span>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </main>
 

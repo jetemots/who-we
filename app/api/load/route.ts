@@ -8,14 +8,33 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get('sessionId');
-  if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
 
-  const { data } = await supabaseAdmin
-    .from('conversations')
-    .select('messages, current_module')
-    .eq('session_id', sessionId)
-    .eq('user_id', user.id)
-    .single();
+  // 优先用浏览器记录的 sessionId 查找；找不到则回退到该账号的最新会话
+  // （这样换浏览器/清缓存也能恢复聊天记录）
+  let data: { messages: unknown[]; current_module: string } | null = null;
+
+  if (sessionId) {
+    const r = await supabaseAdmin
+      .from('conversations')
+      .select('messages, current_module')
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (r.data) data = r.data;
+  }
+
+  if (!data) {
+    const r = await supabaseAdmin
+      .from('conversations')
+      .select('messages, current_module')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (r.data) data = r.data;
+  }
 
   return NextResponse.json({
     messages: data?.messages || [],

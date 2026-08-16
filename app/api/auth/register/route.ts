@@ -56,11 +56,13 @@ export async function POST(req: Request) {
   const token = await createSession(data.id);
 
   // 令牌放入 HttpOnly Cookie（防 XSS 窃取）
+  // Secure 标志根据实际协议：局域网 HTTP 不启用，HTTPS 才启用
+  const isHttps = req.url?.startsWith('https://');
   const res = NextResponse.json({ success: true, phone, name: trimmedName || null, settings: null });
   res.cookies.set('who-we_token', token, {
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     maxAge: 30 * 24 * 60 * 60,
     path: '/',
   });

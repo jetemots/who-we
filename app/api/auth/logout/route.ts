@@ -7,10 +7,11 @@ export async function POST(req: Request) {
     await revokeSession(token);
   }
   const res = NextResponse.json({ success: true });
+  const isHttps = req.url?.startsWith('https://');
   res.cookies.set('who-we_token', '', {
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     maxAge: 0,
     path: '/',
   });
