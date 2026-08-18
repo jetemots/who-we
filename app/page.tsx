@@ -510,6 +510,8 @@ function ChatApp({
   const [openingLoading, setOpeningLoading] = useState(false);
   const recognitionRef = useRef<any>(null);
   const openingStarted = useRef(false);
+  // 记录开场白消息 id，撤销时保护它不被删除
+  const openingIdRef = useRef<string | null>(null);
 
   const saveConversation = useCallback(
     async (allMessages: any[]) => {
@@ -529,7 +531,7 @@ function ChatApp({
     [sessionId, setCurrentModule],
   );
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, stop } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: { sessionId },
@@ -544,6 +546,12 @@ function ChatApp({
   const messagesRef = useRef(messages);
   useEffect(() => {
     messagesRef.current = messages;
+  }, [messages]);
+
+  // 自动滚动：AI 回复时跟随到最新消息
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
   // 防抖自动保存：messages 变化后 1.5 秒内没有新变化则保存到账号
@@ -569,6 +577,7 @@ function ChatApp({
     setOpeningLoading(true);
 
     const openingId = 'opening_' + Date.now();
+    openingIdRef.current = openingId;
     const controller = new AbortController();
 
     (async () => {
@@ -669,16 +678,25 @@ function ChatApp({
     -1,
   );
 
-  const undoMessage = (idx: number) => {
+  const undoMessage = () => {
+    // 如果 AI 正在回复，先停止流式写入，避免删除后内容"复活"
+    if (isBusy) stop();
     setMessages((prev) => {
-      if (idx < 0 || idx >= prev.length) return prev;
-      const next = [...prev];
-      next.splice(idx, 1); // 删除用户消息
-      // 如果下一条是 AI 回复（对应这个问题的回答），一并删除
-      if (idx < next.length && next[idx].role === 'assistant') {
-        next.splice(idx, 1);
+      if (prev.length === 0) return prev;
+      // 找最后一条用户消息（也就是"当前最新一句"）
+      let lastUserIdx = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].role === 'user') {
+          lastUserIdx = i;
+          break;
+        }
       }
-      return next;
+      if (lastUserIdx === -1) return prev;
+      // 开场白保护：用户消息不可能在开场白之前，这里兜底
+      if (prev[lastUserIdx].id === openingIdRef.current) return prev;
+      // 删除"最后一条用户消息 + 它之后的所有内容"（对应的一整轮，AI 回复一起删）
+      // 这样对应关系绝对正确，且开场白（在此之前）不受影响
+      return prev.slice(0, lastUserIdx);
     });
   };
 
@@ -768,11 +786,11 @@ function ChatApp({
                 {m.role === 'user' && (
                   <button
                     type="button"
-                    onClick={() => undoMessage(idx)}
-                    disabled={!isLatestUser}
-                    title={isLatestUser ? '撤销这句话' : '只能撤销最新一句'}
+                    onClick={undoMessage}
+                    disabled={!isLatestUser || isBusy}
+                    title={isBusy ? 'AI 回复中，请稍候' : isLatestUser ? '撤销这句话' : '只能撤销最新一句'}
                     className={`shrink-0 mr-2 text-lg rounded-full w-8 h-8 flex items-center justify-center transition ${
-                      isLatestUser
+                      isLatestUser && !isBusy
                         ? 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100'
                         : 'text-neutral-200 cursor-not-allowed'
                     }`}
@@ -821,6 +839,9 @@ function ChatApp({
               </div>
             </div>
           )}
+
+          {/* 自动滚动锚点 */}
+          <div ref={messagesEndRef} />
         </div>
       </main>
 
