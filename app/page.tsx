@@ -718,9 +718,6 @@ function ChatApp({
             <p className="text-sm text-neutral-500 mt-1">个人深度梳理</p>
           </div>
           <div className="flex items-center gap-4">
-            {currentModule !== 'module_1' && (
-              <span className="text-sm text-neutral-400">上次进度：{currentModule}</span>
-            )}
             {name ? (
               <span className="text-sm text-neutral-500">{name}</span>
             ) : (
