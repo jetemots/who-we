@@ -117,26 +117,49 @@ export interface AuthUser {
   settings: Record<string, unknown> | null;
 }
 
-export async function getUserFromRequest(req: Request): Promise<AuthUser | null> {
+// 查库结果：dbError 有值代表「没查到」是因为数据库连不上，
+// 而不是用户没登录 —— 两者必须分开，否则网络一断就全体"未登录"，很难查。
+export interface AuthLookup {
+  user: AuthUser | null;
+  dbError: string | null;
+}
+
+// PGRST116 = 按单行查询却没查到（令牌无效 / 会话过期），属于正常的未登录
+const NO_ROWS_CODE = 'PGRST116';
+
+export async function lookupUser(req: Request): Promise<AuthLookup> {
   const token = getTokenFromRequest(req);
-  if (!token) return null;
+  if (!token) return { user: null, dbError: null };
 
   const now = new Date().toISOString();
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('sessions')
     .select('user_id, expires_at, users!inner(id, phone, name, settings)')
     .eq('token', token)
     .gt('expires_at', now)
     .single();
 
-  if (!data) return null;
+  if (error) {
+    if (error.code === NO_ROWS_CODE) return { user: null, dbError: null };
+    return { user: null, dbError: error.message || '数据库连接失败' };
+  }
+
+  if (!data) return { user: null, dbError: null };
   // 多对一关联可能返回对象或数组，统一处理
   const userRel = Array.isArray(data.users) ? data.users[0] : data.users;
-  if (!userRel) return null;
+  if (!userRel) return { user: null, dbError: null };
   return {
-    id: userRel.id,
-    phone: userRel.phone,
-    name: userRel.name || null,
-    settings: userRel.settings || null,
+    user: {
+      id: userRel.id,
+      phone: userRel.phone,
+      name: userRel.name || null,
+      settings: userRel.settings || null,
+    },
+    dbError: null,
   };
+}
+
+export async function getUserFromRequest(req: Request): Promise<AuthUser | null> {
+  const { user } = await lookupUser(req);
+  return user;
 }

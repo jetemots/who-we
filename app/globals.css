@@ -1,31 +1,246 @@
 @import "tailwindcss";
 
+/* ============================================================
+   who-we · 深夜阅读主题
+   设计目标：夜里看着不刺眼，能让人慢下来把话说完。
+   - 不用纯黑 / 纯白：背景是带一点暖褐的炭色，文字是暖白
+   - 对比度压到阅读舒适区，而不是"越清楚越好"
+   - 边框极淡，靠留白和字距分层，而不是靠线条
+   - 所有颜色都走 CSS 变量，换"日光"主题时整套自动跟着变
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 默认 = 日光：暖白纸面（不是刺眼的纯白） */
+  color-scheme: light;
+
+  --bg: #fbf8f2;
+  --fg: #2a2521;
+
+  --panel: #fffdf8;
+  --surface: rgba(38, 30, 22, 0.045);
+  --surface-strong: rgba(38, 30, 22, 0.08);
+  --field: rgba(255, 255, 255, 0.65);
+  --line: rgba(38, 30, 22, 0.1);
+  --line-strong: rgba(38, 30, 22, 0.22);
+
+  /* 次级文字用"当前文字色的透明版"，用户换字色时整体仍然协调 */
+  --muted-mix: 66%;
+  --faint-mix: 50%;
+  --muted: rgba(60, 50, 40, 0.66); /* 老浏览器兜底 */
+  --faint: rgba(60, 50, 40, 0.5);
+
+  --accent: #9a6b3f;
+  --accent-hover: #855a33;
+  --accent-fg: #fffaf3;
+  --accent-soft: rgba(154, 107, 63, 0.12);
+  --danger: #b4372a;
+  --glow: rgba(154, 107, 63, 0.05);
+  --shadow: 0 32px 80px -50px rgba(40, 30, 20, 0.5);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+
+  /* 正文：中文优先，避免落到 Arial 上把汉字拉变形 */
+  --font-sans: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC",
+    "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-reading: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC",
+    "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 衬线：长段落慢读时更像一封信 */
+  --font-serif-cn: "Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC",
+    "Songti SC", "STSong", "SimSun", Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ffffff;
-    --foreground: #171717;
+/* ---------------- 夜色：低刺激、暖色偏移，久看不累 ---------------- */
+[data-theme="night"] {
+  color-scheme: dark;
+
+  --panel: #1e1812;
+  --surface: rgba(255, 243, 226, 0.05);
+  --surface-strong: rgba(255, 243, 226, 0.09);
+  --field: rgba(255, 243, 226, 0.045);
+  --line: rgba(255, 243, 226, 0.08);
+  --line-strong: rgba(255, 243, 226, 0.18);
+
+  /* 次级文字用"当前文字色的透明版"，用户换字色时整体仍然协调 */
+  --muted-mix: 66%;
+  --faint-mix: 44%;
+  --muted: rgba(230, 214, 192, 0.66); /* 老浏览器兜底 */
+  --faint: rgba(230, 214, 192, 0.44);
+
+  --accent: #c79a6b;
+  --accent-hover: #d8ae80;
+  --accent-fg: #191107;
+  --accent-soft: rgba(199, 154, 107, 0.16);
+  --danger: #e2a196;
+  --glow: rgba(199, 154, 107, 0.1);
+  --shadow: 0 32px 80px -40px rgba(0, 0, 0, 0.95);
+}
+
+/* data-theme="day"（浅色底）不需要单独一份：直接继承上面 :root 的日光变量 */
+
+/* 次级文字跟着当前文字色一起变淡：
+   用户把字色换成别的颜色时，次要信息也会自动协调，不会突然跳出来 */
+@supports (color: color-mix(in srgb, red 50%, transparent)) {
+  :root,
+  [data-theme="night"] {
+    --muted: color-mix(in srgb, var(--fg) var(--muted-mix), transparent);
+    --faint: color-mix(in srgb, var(--fg) var(--faint-mix), transparent);
   }
 }
 
+/* ---------------- 基础 ---------------- */
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
 }
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-reading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: var(--accent-soft);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* 夜里滚动条也不该亮起来 */
+html {
+  background-color: var(--bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+/* ---------------- 表面 / 文字层级 ---------------- */
+
+/* 整个页面：底色自带一团极淡的灯下光晕，避免大面积纯色发闷 */
+.app-shell {
+  background-color: var(--bg);
+  color: var(--fg);
+  background-image: radial-gradient(
+    120% 55% at 50% -12%,
+    var(--glow),
+    transparent 72%
+  );
+  background-repeat: no-repeat;
+}
+
+.app-panel {
+  background-color: var(--panel);
+}
+.app-surface {
+  background-color: var(--surface);
+}
+.app-surface-strong {
+  background-color: var(--surface-strong);
+}
+.app-field {
+  background-color: var(--field);
+}
+.app-line {
+  border-color: var(--line);
+}
+.app-line-strong {
+  border-color: var(--line-strong);
+}
+.app-muted {
+  color: var(--muted);
+}
+.app-faint {
+  color: var(--faint);
+}
+.app-danger {
+  color: var(--danger);
+}
+.app-accent {
+  background-color: var(--accent);
+  color: var(--accent-fg);
+}
+.app-accent:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+.app-hover-fg:hover:not(:disabled) {
+  color: var(--fg);
+}
+.app-hover-surface:hover:not(:disabled) {
+  background-color: var(--surface);
+}
+/* 选中态：不铺满整块强调色，只用一层暖光 + 淡描边，夜里不刺眼 */
+.app-selected {
+  background-color: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--accent);
+}
+
+/* 输入框：无强描边，聚焦时透出一圈暖光 */
+.app-input {
+  background-color: var(--field);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+.app-input::placeholder {
+  color: var(--faint);
+}
+.app-input:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+.app-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.app-input:disabled {
+  opacity: 0.55;
+}
+
+/* ---------------- 阅读排版 ---------------- */
+
+/* 深夜长文：行高接近 2，字距略放开，减少"字挤在一起"的压迫感 */
+.reading {
+  line-height: 1.95;
+  letter-spacing: 0.012em;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+/* 长文慢读：像一封信，夜里更耐看 */
+.reading-serif {
+  font-family: var(--font-serif-cn);
+  letter-spacing: 0.02em;
+}
+
+/* ---------------- 动效（克制，不晃眼） ---------------- */
 
 @keyframes fade-in {
   from {
@@ -36,9 +251,67 @@ body {
   }
 }
 
-/* AI 消息的 Markdown 渲染样式 */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 加载文案的呼吸感，替代刺眼的转圈 */
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* "正在输入…"的呼吸点 */
+@keyframes dot-breathe {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 0.85;
+    transform: translateY(-2px);
+  }
+}
+
+.typing-dot {
+  animation: dot-breathe 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------------- AI 消息的 Markdown ---------------- */
+.markdown-body {
+  font-size: 1em;
+}
 .markdown-body p {
-  margin: 0.5em 0;
+  margin: 0.85em 0;
 }
 .markdown-body p:first-child {
   margin-top: 0;
@@ -51,8 +324,8 @@ body {
 }
 .markdown-body ul,
 .markdown-body ol {
-  margin: 0.5em 0;
-  padding-left: 1.5em;
+  margin: 0.7em 0;
+  padding-left: 1.4em;
 }
 .markdown-body ul {
   list-style: disc;
@@ -61,23 +334,47 @@ body {
   list-style: decimal;
 }
 .markdown-body li {
-  margin: 0.25em 0;
+  margin: 0.3em 0;
+}
+.markdown-body li::marker {
+  color: var(--faint);
 }
 .markdown-body h1,
 .markdown-body h2,
 .markdown-body h3 {
   font-weight: 600;
-  margin: 0.75em 0 0.4em;
+  letter-spacing: 0.02em;
+  margin: 1.2em 0 0.5em;
+}
+.markdown-body h1 {
+  font-size: 1.25em;
+}
+.markdown-body h2 {
+  font-size: 1.12em;
+}
+.markdown-body h3 {
+  font-size: 1em;
 }
 .markdown-body blockquote {
-  border-left: 3px solid rgba(128, 128, 128, 0.3);
+  border-left: 2px solid var(--line-strong);
   padding-left: 1em;
-  margin: 0.5em 0;
-  opacity: 0.9;
+  margin: 1em 0;
+  color: var(--muted);
+}
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 1.5em 0;
+}
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .markdown-body code {
-  background: rgba(128, 128, 128, 0.12);
-  padding: 0.1em 0.35em;
+  background-color: var(--surface);
+  padding: 0.15em 0.4em;
   border-radius: 4px;
+  font-family: var(--font-mono);
   font-size: 0.9em;
 }

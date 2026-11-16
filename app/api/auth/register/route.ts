@@ -29,11 +29,15 @@ export async function POST(req: Request) {
   }
 
   // 检查手机号是否已注册
-  const { data: existing } = await supabaseAdmin
+  const { data: existing, error: lookupError } = await supabaseAdmin
     .from('users')
     .select('id')
     .eq('phone', phone)
     .single();
+  // 连不上库时不能当成"没注册"就往下走，否则最后只会报一句看不懂的网络错误
+  if (lookupError && lookupError.code !== 'PGRST116') {
+    return NextResponse.json({ error: '服务器连不上数据库，请稍后再试' }, { status: 503 });
+  }
   if (existing) {
     await recordAuthAttempt(ip, phone, 'register', false);
     return NextResponse.json({ error: '该手机号已注册' }, { status: 409 });
