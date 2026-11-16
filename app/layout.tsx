@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 // 移动端地址栏 / 状态栏跟着页面底色走，别在夜里留一条亮白边
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf8f2" },
-    { media: "(prefers-color-scheme: dark)", color: "#16120f" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#262822" },
   ],
   colorScheme: "light dark",
 };

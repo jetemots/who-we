@@ -1,54 +1,58 @@
 @import "tailwindcss";
 
 /* ============================================================
-   who-we · 深夜阅读主题
-   设计目标：夜里看着不刺眼，能让人慢下来把话说完。
-   - 不用纯黑 / 纯白：背景是带一点暖褐的炭色，文字是暖白
-   - 对比度压到阅读舒适区，而不是"越清楚越好"
-   - 边框极淡，靠留白和字距分层，而不是靠线条
-   - 所有颜色都走 CSS 变量，换"日光"主题时整套自动跟着变
+   who-we · Warm Intelligence（温暖的理性）
+   设计目标：温馨、自然、简洁、专业、有陪伴感。
+   - 象牙白 / 奶油色 / 鼠尾草绿 / 柔和大地色，整体以浅色为主
+   - 绿色只作适度强调，避免高饱和与强烈对比
+   - 边框极淡、阴影轻微，靠留白与层级分层，不堆装饰
+   - 所有颜色走 CSS 变量，换主题时整套自动跟着变
    ============================================================ */
 
 :root {
-  /* 默认 = 日光：暖白纸面（不是刺眼的纯白） */
+  /* 默认 = 日光：象牙白纸面，鼠尾草绿只作适度强调 */
   color-scheme: light;
 
-  --bg: #fbf8f2;
-  --fg: #2a2521;
+  --bg: #f7f6f0;
+  --fg: #50554c;
+  --chat-bg: #f3f3ec;
 
-  --panel: #fffdf8;
-  --surface: rgba(38, 30, 22, 0.045);
-  --surface-strong: rgba(38, 30, 22, 0.08);
-  --field: rgba(255, 255, 255, 0.65);
-  --line: rgba(38, 30, 22, 0.1);
-  --line-strong: rgba(38, 30, 22, 0.22);
+  --panel: #ffffff;
+  --bubble-ai: #ffffff;
+  --bubble-user: #e5e9dd;
+  --surface: rgba(80, 85, 76, 0.05);
+  --surface-strong: rgba(80, 85, 76, 0.09);
+  --field: #ffffff;
+  --line: #e8e8df;
+  --line-strong: rgba(80, 85, 76, 0.22);
 
   /* 次级文字用"当前文字色的透明版"，用户换字色时整体仍然协调 */
-  --muted-mix: 66%;
-  --faint-mix: 50%;
-  --muted: rgba(60, 50, 40, 0.66); /* 老浏览器兜底 */
-  --faint: rgba(60, 50, 40, 0.5);
+  --muted-mix: 68%;
+  --faint-mix: 52%;
+  --muted: #92958a; /* 老浏览器兜底 */
+  --faint: rgba(146, 149, 138, 0.72);
 
-  --accent: #9a6b3f;
-  --accent-hover: #855a33;
-  --accent-fg: #fffaf3;
-  --accent-soft: rgba(154, 107, 63, 0.12);
-  --danger: #b4372a;
-  --glow: rgba(154, 107, 63, 0.05);
-  --shadow: 0 32px 80px -50px rgba(40, 30, 20, 0.5);
+  --accent: #87977d;
+  --accent-hover: #728369;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(135, 151, 125, 0.14);
+  --accent-alt: #b7a58b;
+  --danger: #b4554a;
+  --glow: rgba(183, 165, 139, 0.1);
+  --shadow: 0 16px 40px -24px rgba(80, 85, 76, 0.28);
 }
 
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--fg);
 
-  /* 正文：中文优先，避免落到 Arial 上把汉字拉变形 */
-  --font-sans: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC",
-    "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-reading: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC",
-    "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 正文：英文用 Inter，中文优先思源黑体 / HarmonyOS，避免落到 Arial 拉变形 */
+  --font-sans: "Inter", "Source Han Sans SC", "HarmonyOS Sans SC",
+    "PingFang SC", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-reading: "Inter", "Source Han Sans SC", "HarmonyOS Sans SC",
+    "PingFang SC", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* 衬线：长段落慢读时更像一封信 */
   --font-serif-cn: "Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC",
     "Songti SC", "STSong", "SimSun", Georgia, serif;
@@ -60,26 +64,33 @@
 [data-theme="night"] {
   color-scheme: dark;
 
-  --panel: #1e1812;
-  --surface: rgba(255, 243, 226, 0.05);
-  --surface-strong: rgba(255, 243, 226, 0.09);
-  --field: rgba(255, 243, 226, 0.045);
-  --line: rgba(255, 243, 226, 0.08);
-  --line-strong: rgba(255, 243, 226, 0.18);
+  --bg: #262822;
+  --fg: #e8e6df;
+  --chat-bg: #2b2d26;
+
+  --panel: #33352d;
+  --bubble-ai: #3a3d34;
+  --bubble-user: #46503e;
+  --surface: rgba(232, 230, 223, 0.05);
+  --surface-strong: rgba(232, 230, 223, 0.09);
+  --field: rgba(232, 230, 223, 0.05);
+  --line: rgba(232, 230, 223, 0.1);
+  --line-strong: rgba(232, 230, 223, 0.2);
 
   /* 次级文字用"当前文字色的透明版"，用户换字色时整体仍然协调 */
   --muted-mix: 66%;
-  --faint-mix: 44%;
-  --muted: rgba(230, 214, 192, 0.66); /* 老浏览器兜底 */
-  --faint: rgba(230, 214, 192, 0.44);
+  --faint-mix: 48%;
+  --muted: rgba(232, 230, 223, 0.66); /* 老浏览器兜底 */
+  --faint: rgba(232, 230, 223, 0.48);
 
-  --accent: #c79a6b;
-  --accent-hover: #d8ae80;
-  --accent-fg: #191107;
-  --accent-soft: rgba(199, 154, 107, 0.16);
-  --danger: #e2a196;
-  --glow: rgba(199, 154, 107, 0.1);
-  --shadow: 0 32px 80px -40px rgba(0, 0, 0, 0.95);
+  --accent: #a3b293;
+  --accent-hover: #b5c2a6;
+  --accent-fg: #22241e;
+  --accent-soft: rgba(163, 178, 147, 0.18);
+  --accent-alt: #c9b79d;
+  --danger: #e0a89f;
+  --glow: rgba(183, 165, 139, 0.08);
+  --shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.7);
 }
 
 /* data-theme="day"（浅色底）不需要单独一份：直接继承上面 :root 的日光变量 */
@@ -154,6 +165,19 @@ html {
 
 .app-panel {
   background-color: var(--panel);
+}
+/* 聊天内容区：比全局背景略深一层的奶油色，把对话"托"出来 */
+.app-chat {
+  background-color: var(--chat-bg);
+}
+/* 消息气泡：AI 白色、用户浅鼠尾草绿，圆角 16px */
+.app-bubble-ai {
+  background-color: var(--bubble-ai);
+  border: 1px solid var(--line);
+}
+.app-bubble-user {
+  background-color: var(--bubble-user);
+  border: 1px solid transparent;
 }
 .app-surface {
   background-color: var(--surface);

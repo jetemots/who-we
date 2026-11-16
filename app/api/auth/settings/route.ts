@@ -32,8 +32,8 @@ export async function POST(req: Request) {
   // 只接受受控字段，防止注入任意数据
   const cleaned = {
     fontSize: FONT_SIZES.includes(settings.fontSize) ? settings.fontSize : 17,
-    textColor: pickColor(settings.textColor, '#2a2521'),
-    bgColor: pickColor(settings.bgColor, '#fbf8f2'),
+    textColor: pickColor(settings.textColor, '#50554c'),
+    bgColor: pickColor(settings.bgColor, '#f7f6f0'),
     fontFamily: FONT_FAMILIES.includes(settings.fontFamily) ? settings.fontFamily : 'sans',
   };
 

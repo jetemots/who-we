@@ -442,9 +442,9 @@ interface Settings {
 const DEFAULT_SETTINGS: Settings = {
   // 17px：比原来的 16px 松一点，中文长段落更好读
   fontSize: 17,
-  // 暖褐墨色 + 暖白纸面，避开纯黑纯白的高对比
-  textColor: '#2a2521',
-  bgColor: '#fbf8f2',
+  // Warm Intelligence：鼠尾草绿系墨灰字 + 象牙白纸面
+  textColor: '#50554c',
+  bgColor: '#f7f6f0',
   fontFamily: 'sans',
 };
 
@@ -457,30 +457,29 @@ const FONT_FAMILIES: { label: string; value: FontFamily; hint: string }[] = [
   { label: '宋体', value: 'serif', hint: '像信，适合慢读' },
 ];
 
-// 浅底用深字
+// 浅底用深字（Warm Intelligence 色系，拉开明度与色相，避免重复）
 const LIGHT_TEXT_COLORS = [
-  { label: '墨黑', value: '#1f2937' },
-  { label: '暖褐', value: '#2a2521' },
-  { label: '深灰', value: '#4b5563' },
-  { label: '酒红', value: '#7f1d1d' },
+  { label: '鼠尾草', value: '#50554c' },
+  { label: '墨黑', value: '#33332e' },
+  { label: '大地', value: '#7a6a52' },
+  { label: '酒红', value: '#8a3b34' },
 ];
 
 // 深底用暖白：不用纯白，夜里不炸眼
 const NIGHT_TEXT_COLORS = [
-  { label: '暖白', value: '#ded1bf' },
-  { label: '米黄', value: '#d8c8ae' },
-  { label: '浅灰', value: '#c8c4bd' },
-  { label: '暖棕', value: '#c4b09a' },
+  { label: '暖白', value: '#e8e6df' },
+  { label: '米黄', value: '#ddd6c6' },
+  { label: '浅灰', value: '#cfcdc5' },
+  { label: '暖棕', value: '#c9b79d' },
 ];
 
 const BG_COLORS = [
-  { label: '纯白', value: '#ffffff' },
-  { label: '暖白', value: '#fbf8f2' },
-  { label: '米白', value: '#f7f1e4' },
-  { label: '雾灰', value: '#f3f2f0' },
-  { label: '夜色', value: '#16120f' },
-  { label: '墨黑', value: '#0f0f10' },
-  { label: '灯下', value: '#1c1712' },
+  { label: '象牙白', value: '#f7f6f0' },
+  { label: '米白', value: '#fbf8f2' },
+  { label: '雾灰', value: '#ecece6' },
+  { label: '夜色', value: '#262822' },
+  { label: '暖褐', value: '#3b342b' },
+  { label: '墨黑', value: '#141414' },
 ];
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -512,7 +511,7 @@ function textColorOptions(settings: Settings) {
 
 // 换底色时：原来的字如果看不清了，自动落到同一侧的稳妥字色
 function readableTextColor(bg: string, current: string): string {
-  const fallback = isDarkBackground(bg) ? NIGHT_TEXT_COLORS[0].value : '#1f2937';
+  const fallback = isDarkBackground(bg) ? NIGHT_TEXT_COLORS[0].value : '#50554c';
   if (!isHexColor(current)) return fallback;
   const delta = Math.abs(brightnessOf(bg) - brightnessOf(current));
   return delta >= 0.28 ? current : fallback;
@@ -1069,7 +1068,7 @@ function ChatApp({
       </header>
 
       {/* 聊天内容区 */}
-      <main className="flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-10">
+      <main className="app-chat flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-10">
         <div className="mx-auto w-full max-w-3xl space-y-7 sm:space-y-8">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
@@ -1123,8 +1122,8 @@ function ChatApp({
                 <div
                   className={`max-w-[86%] ${
                     m.role === 'user'
-                      ? 'rounded-2xl rounded-br-md border app-line app-surface px-4 py-3 text-right'
-                      : 'text-left'
+                      ? 'app-bubble-user rounded-2xl rounded-br-md px-4 py-3 text-right'
+                      : 'app-bubble-ai rounded-2xl rounded-bl-md px-4 py-3 text-left'
                   }`}
                 >
                   {m.role === 'user' && (
@@ -1170,7 +1169,7 @@ function ChatApp({
             setInput('');
           }
         }}
-        className="border-t app-line px-5 py-4 sm:px-8"
+        className="app-chat border-t app-line px-5 py-4 sm:px-8"
       >
         <div className="mx-auto flex w-full max-w-3xl items-center gap-2.5">
           <button
