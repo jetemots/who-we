@@ -555,6 +555,9 @@ function themeStyle(settings: Settings): React.CSSProperties {
   return {
     '--bg': settings.bgColor,
     '--fg': settings.textColor,
+    // 聊天区背景跟着所选底色派生：比全局略深/略浅一层，
+    // 调背景色时整个页面一起变，而不是只有顶部标题栏变
+    '--chat-bg': `color-mix(in srgb, ${settings.bgColor} 97%, ${settings.textColor} 3%)`,
     backgroundColor: settings.bgColor,
     color: settings.textColor,
     fontSize: `${settings.fontSize}px`,
